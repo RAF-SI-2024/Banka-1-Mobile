@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Button, Alert, Clipboard } from 'react-native';
+import { View, Text, StyleSheet, Button, Alert } from 'react-native';
 
 const generateCode = () => {
   const chars = '0123456789';
@@ -10,46 +10,63 @@ const generateCode = () => {
   return result;
 };
 
-export default function MenuScreen() {
+export default function VerificationScreen() {
   const [code, setCode] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
-  const [attempts, setAttempts] = useState(0);
+
+  const transakcijaId = 1; //mock trenutno
+
+  const sendCodeToBackend = async (otpKod: string) => {
+    try {
+      const response = await fetch('http://localhost:8082/otp/verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transakcijaId,
+          otpKod,
+        }),
+      });
+
+      if (response.ok) {
+        Alert.alert('Uspešno', 'Kod je uspešno poslat i verifikovan.');
+      } else {
+        const errorText = await response.text();
+        Alert.alert('Greška', `Verifikacija nije uspela:\n${errorText}`);
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Greška', 'Greška pri povezivanju sa serverom.');
+    }
+  };
 
   const handleVerify = () => {
     const newCode = generateCode();
-    const expiry = Date.now() + 5 * 60 * 1000; 
+    const expiry = Date.now() + 5 * 60 * 1000; // 5 minuta
     setCode(newCode);
     setExpiresAt(expiry);
-    setAttempts(0);
-    Alert.alert('Code generated.', `Your code: ${newCode}`);
-  };
 
-  const handleCopy = () => {
-    if (code) {
-      Clipboard.setString(code);
-      Alert.alert('Copied', 'Copied to clipboard.');
-    }
+    sendCodeToBackend(newCode);
   };
 
   const getRemainingTime = () => {
     if (!expiresAt) return null;
     const ms = expiresAt - Date.now();
-    if (ms <= 0) return 'Code expired.';
+    if (ms <= 0) return 'Kod je istekao.';
     const seconds = Math.floor(ms / 1000);
     return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Verification</Text>
-
-      <Button title="Verify transaction" onPress={handleVerify} color="#2E7D32" />
+      <Text style={styles.title}>Verifikacija transakcije</Text>
+      <Button title="Generiši i Pošalji Kod" onPress={handleVerify} color="#2E7D32" />
 
       {code && (
         <View style={styles.codeBox}>
-          <Text style={styles.codeText}>Code: {code}</Text>
-          <Text style={styles.timerText}>Valid for: {getRemainingTime()}</Text>
-          <Button title="Copy code" onPress={handleCopy} />
+          <Text style={styles.codeText}>Kod: {code}</Text>
+          <Text style={styles.timerText}>Važi još: {getRemainingTime()}</Text>
         </View>
       )}
     </View>
