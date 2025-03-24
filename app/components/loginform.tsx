@@ -1,24 +1,46 @@
-
 import React, { useState } from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { TextInput, Button, Text, Card } from 'react-native-paper';
 import { Asset } from 'expo-asset';
 import { Ionicons } from '@expo/vector-icons';
 
 const logo = Asset.fromModule(require('/Users/brankadelic/Desktop/mobile/Banka-1-Mobile/assets/images/login.png')).uri;
 
-const LoginForm = ({ onLogin }: { onLogin: () => void }) => {
+import * as SecureStore from 'expo-secure-store';
+import { loginUser } from '../services/axiosUser';
+import { useRouter } from 'expo-router';
+import { jwtDecode } from 'jwt-decode';
+
+
+const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
 
-  const handleLogin = () => {
+  const router = useRouter();
+
+
+  const handleLogin = async () => {
     if (email === '' || password === '') {
       setError('Molimo unesite email i lozinku');
-    } else {
-      setError('');
-      onLogin();
+      return;
+    }
+
+    try {
+      const token = await loginUser(email, password);
+      const decoded: any = jwtDecode(token);
+
+      if (decoded.isAdmin === true) {
+        setError('Admin korisnici nemaju pristup mobilnoj aplikaciji.');
+        return;
+      }
+
+      await SecureStore.setItemAsync('token', token);
+      router.replace('/profile');
+    } catch (err) {
+      console.log(err);
+      setError('Neispravan email ili lozinka');
     }
   };
   
@@ -31,10 +53,12 @@ const LoginForm = ({ onLogin }: { onLogin: () => void }) => {
       <View style={styles.cardContainer}>
         <Card style={styles.card}>
           <Card.Content>
+
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.description}>Log In To Continue</Text>
             
             <Image source={{ uri: logo }} style={styles.logo} />
+
 
             <TextInput
               label="Email"
@@ -121,6 +145,7 @@ const styles = StyleSheet.create({
     bottom: 50,
     textAlign: 'center',
   },
+
   logo: {
     width: 100,
     height: 100,
@@ -129,6 +154,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     bottom:50
   },
+
+
   input: {
     width: 250,
     marginBottom: 15,
@@ -139,17 +166,21 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 5,
     backgroundColor: '#161B22',
+
     width: '50%',
     alignSelf: 'center',
     bottom: 30
   },
   buttonDisabled: {
     backgroundColor: '#D3D3D3', 
+    width: '100%',
+
   },
   error: {
     color: 'red',
     textAlign: 'center',
     marginBottom: 10,
+
     bottom:50
   },
   passwordContainer: {
@@ -164,3 +195,5 @@ const styles = StyleSheet.create({
 });
 
 export default LoginForm;
+
+
