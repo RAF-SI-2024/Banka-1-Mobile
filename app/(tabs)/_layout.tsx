@@ -7,6 +7,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="home"
         options={{
           headerTitle:"Home",
+          headerShown:false,
           tabBarIcon: ({focused,color}) =>  
            <Ionicons name={focused? "wallet-sharp": "wallet-outline"} 
            size={25}> </Ionicons>
