@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Button, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Button, Alert, FlatList } from 'react-native';
+import axiosTransactions from '../services/axiosBanking';
+import { getUserIdFromToken } from '../services/axiosUser';
 
 const generateCode = () => {
   const chars = '0123456789';
@@ -10,100 +12,160 @@ const generateCode = () => {
   return result;
 };
 
-export default function VerificationScreen() {
-  const [code, setCode] = useState<string | null>(null);
-  const [expiresAt, setExpiresAt] = useState<number | null>(null);
+const VerificationScreen = () => {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [activeCodes, setActiveCodes] = useState<{ [id: number]: { code: string, expiresAt: number } }>({});
+  const [completed, setCompleted] = useState<number[]>([]);
+  const [ignored, setIgnored] = useState<number[]>([]);
 
-  const transakcijaId = 1; //mock trenutno
+  useEffect(() => {
+    const fetchData = async () => {
+      const userId = await getUserIdFromToken();
+      if (!userId) return;
+      try {
+        const response = await axiosTransactions.get(`/transactions/${userId}`);
+        const all = response.data.data.data || [];
+        const pending = all.filter((tx: any) => tx.status === 'PENDING');
+        setTransactions(pending);
+      } catch (error) {
+        console.error("Greška pri dobavljanju transakcija:", error);
+      }
+    };
+    fetchData();
+  }, []);
 
-  const sendCodeToBackend = async (otpKod: string) => {
+  const sendCodeToBackend = async (transakcijaId: number, otpKod: string) => {
     try {
-      const response = await fetch('http://localhost:8082/otp/verification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transakcijaId,
-          otpKod,
-        }),
+      const response = await axiosTransactions.post('/otp/verification', {
+        transakcijaId,
+        otpKod,
       });
 
-      if (response.ok) {
-        Alert.alert('Uspešno', 'Kod je uspešno poslat i verifikovan.');
+      if (response.data.success) {
+        Alert.alert('Uspešno', 'Transakcija verifikovana.');
+        setCompleted(prev => [...prev, transakcijaId]);
+        setActiveCodes(prev => {
+          const updated = { ...prev };
+          delete updated[transakcijaId];
+          return updated;
+        });
       } else {
-        const errorText = await response.text();
-        Alert.alert('Greška', `Verifikacija nije uspela:\n${errorText}`);
+        Alert.alert('Greška', response.data.error || 'Verifikacija nije uspela.');
       }
     } catch (error) {
-      console.error(error);
-      Alert.alert('Greška', 'Greška pri povezivanju sa serverom.');
+      console.error('Greška pri verifikaciji:', error);
+      Alert.alert('Greška', 'Neuspešna konekcija ili greška na serveru.');
     }
   };
 
-  const handleVerify = () => {
-    const newCode = generateCode();
-    const expiry = Date.now() + 5 * 60 * 1000; // 5 minuta
-    setCode(newCode);
-    setExpiresAt(expiry);
-
-    sendCodeToBackend(newCode);
+  const handleApprove = (transakcijaId: number) => {
+    const code = generateCode();
+    const expiresAt = Date.now() + 5 * 60 * 1000;
+    setActiveCodes(prev => ({ ...prev, [transakcijaId]: { code, expiresAt } }));
+    sendCodeToBackend(transakcijaId, code);
   };
 
-  const getRemainingTime = () => {
-    if (!expiresAt) return null;
+  const handleIgnore = (transakcijaId: number) => {
+    setIgnored(prev => [...prev, transakcijaId]);
+    setActiveCodes(prev => {
+      const updated = { ...prev };
+      delete updated[transakcijaId];
+      return updated;
+    });
+  };
+
+  const getRemainingTime = (expiresAt: number) => {
     const ms = expiresAt - Date.now();
-    if (ms <= 0) return 'Kod je istekao.';
+    if (ms <= 0) return 'Istekao';
     const seconds = Math.floor(ms / 1000);
     return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
   };
 
+  const renderItem = ({ item }: { item: any }) => {
+    if (completed.includes(item.id) || ignored.includes(item.id)) return null;
+    const otpData = activeCodes[item.id];
+    return (
+      <View style={styles.card}>
+        <Text style={styles.text}>Transfer ID: {item.id}</Text>
+        <View style={styles.buttonRow}>
+          <Button title="Approve" onPress={() => handleApprove(item.id)} color="#2E7D32" />
+          <Button title="Ignore" onPress={() => handleIgnore(item.id)} color="#E53935" />
+        </View>
+        {otpData && (
+          <View style={styles.otpBox}>
+            <Text style={styles.codeText}>Kod: {otpData.code}</Text>
+            <Text style={styles.timerText}>Važi još: {getRemainingTime(otpData.expiresAt)}</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Verifikacija transakcije</Text>
-      <Button title="Generiši i Pošalji Kod" onPress={handleVerify} color="#2E7D32" />
-
-      {code && (
-        <View style={styles.codeBox}>
-          <Text style={styles.codeText}>Kod: {code}</Text>
-          <Text style={styles.timerText}>Važi još: {getRemainingTime()}</Text>
-        </View>
-      )}
+      <Text style={styles.title}>Zahtevi za verifikaciju</Text>
+      <FlatList
+        data={transactions}
+        keyExtractor={item => item.id.toString()}
+        renderItem={renderItem}
+        ListEmptyComponent={<Text style={styles.emptyText}>Nema zahteva za potvrdu.</Text>}
+      />
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 30,
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'flex-start',
+    padding: 16,
+    backgroundColor: '#f2f2f2',
   },
   title: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 30,
+    marginBottom: 16,
     textAlign: 'center',
   },
-  codeBox: {
-    marginTop: 20,
+  card: {
     backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
+    padding: 18,
+    borderRadius: 12,
+    marginBottom: 12,
     elevation: 3,
   },
-  codeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
+  text: {
+    fontSize: 16,
     marginBottom: 10,
-    color: '#1E88E5',
+  },
+  otpBox: {
+    marginTop: 10,
+    backgroundColor: '#e3f2fd',
+    padding: 10,
+    borderRadius: 8,
+  },
+  codeText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1976d2',
+    textAlign: 'center',
   },
   timerText: {
-    fontSize: 16,
-    color: '#999',
+    fontSize: 14,
+    color: '#666',
     textAlign: 'center',
-    marginBottom: 10,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    gap: 12
+  },
+  emptyText: {
+    marginTop: 40,
+    textAlign: 'center',
+    color: '#888',
+    fontSize: 16,
   },
 });
+
+export default VerificationScreen;

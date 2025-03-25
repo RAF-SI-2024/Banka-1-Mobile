@@ -1,32 +1,75 @@
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Button } from 'react-native';
 import { useRouter } from 'expo-router';
+import { logoutUser, getUserIdFromToken } from '../services/axiosUser';
+import apiUser from '../services/axiosUser';
+import { Card } from 'react-native-paper';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const [userData, setUserData] = useState<any>(null);
 
-  // Dummy podaci
-  const user = {
-    firstName: 'Ana',
-    lastName: 'Vukov',
-    email: 'ana@example.com',
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const userId = await getUserIdFromToken();
+        if (!userId) return;
+
+        const response = await apiUser.get(`/api/customer/${userId}`);
+        console.log('User data:', response.data.data);
+        setUserData(response.data.data);
+      } catch (error) {
+        console.error('Error fetching:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      router.push('/');
+    } catch (error) {
+      console.error('Error while logging out:', error);
+    }
   };
 
-  const handleLogout = () => {
-    // Ovde kasnije brišemo token i čistimo podatke
-    router.push('/');
-  };
+  if (!userData) {
+    return (
+      <View style={styles.container}>
+        <Text style={{ color: 'gray' }}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Moj profil</Text>
-      <View style={styles.infoBox}>
-        <Text style={styles.label}>Ime i Prezime:</Text>
-        <Text style={styles.value}>{user.firstName} {user.lastName}</Text>
+      <Card
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 400,
+          backgroundColor: "#1E2432",
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          padding: 20,
+          justifyContent: "center",
+          alignItems: "flex-start",
+        }}
+      >
+        <Text style={styles.hello}>Hello, {userData.username}!</Text>
+        <Text style={styles.info}>
+          {userData.firstName} {userData.lastName}, {userData.email}
+        </Text>
+        <Text style={styles.info}>{userData.address}</Text>
+      </Card>
 
-        <Text style={styles.label}>Email:</Text>
-        <Text style={styles.value}>{user.email}</Text>
+      <View style={styles.logoutContainer}>
+        <Button title="Logout" onPress={handleLogout} color="#E53935" />
       </View>
-      <Button title="Logout" onPress={handleLogout} color="#E53935" />
     </View>
   );
 }
@@ -34,32 +77,22 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 30,
-    justifyContent: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#e0e0e0',
+    paddingTop: 420,
   },
-  title: {
-    fontSize: 28,
+  hello: {
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 30,
-    textAlign: 'center',
-    color: '#333',
+    color: '#ffffff',
+    marginBottom: 10,
   },
-  infoBox: {
-    marginBottom: 40,
-    padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    elevation: 2,
-  },
-  label: {
+  info: {
     fontSize: 16,
-    color: '#777',
-    marginTop: 10,
+    color: '#ffffff',
+    marginBottom: 5,
   },
-  value: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
+  logoutContainer: {
+    marginTop: 40,
+    alignItems: 'center',
   },
 });

@@ -15,6 +15,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="profile"
         options={{
           headerTitle:"Profile",
+          headerShown:false,
           tabBarIcon: ({focused,color}) =>  
           <Ionicons name={focused? "person-circle-sharp": "person-circle-outline"} 
           size={25}> </Ionicons>
@@ -23,6 +24,7 @@ export default function TabsLayout() {
           name="verification"
           options={{
             headerTitle: "Verification",
+           // headerShown:false,
             tabBarIcon: ({ focused }) => (
               <Ionicons
                 name={focused ? "checkmark-circle" : "checkmark-circle-outline"}

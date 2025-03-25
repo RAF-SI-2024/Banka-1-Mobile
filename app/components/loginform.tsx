@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TextInput, Button, Text, Card } from 'react-native-paper';
-import { Asset } from 'expo-asset';
-import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'react-native';
 
-const logo = Asset.fromModule(require('/Users/brankadelic/Desktop/mobile/Banka-1-Mobile/assets/images/login.png')).uri;
+
 
 import * as SecureStore from 'expo-secure-store';
 import { loginUser } from '../services/axiosUser';
@@ -57,9 +56,8 @@ const LoginForm = () => {
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.description}>Log In To Continue</Text>
             
-            <Image source={{ uri: logo }} style={styles.logo} />
 
-
+            <Image source={require('../../assets/images/login.png')} style={styles.logo} />
             <TextInput
               label="Email"
               value={email}
