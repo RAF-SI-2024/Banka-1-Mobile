@@ -3,7 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
 
 
-const BASE_URL = 'http://192.168.0.179:8081';
+const BASE_URL = 'http://192.168.88.44:8081';
 
 const apiUser = axios.create({
   baseURL: BASE_URL,
