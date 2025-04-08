@@ -1,7 +1,8 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { AxiosError } from 'axios';
 
-const BANKING_BASE_URL = 'http://192.168.0.179:8082';
+const BANKING_BASE_URL = 'http://192.168.88.44:8082';
 
 const apiBanking = axios.create({
   baseURL: BANKING_BASE_URL,
@@ -54,6 +55,30 @@ export const fetchAccountsId = async (userId: number) => {
     }));
   
     return formatted;
+  };
+
+
+  export const fetchAccountsTransactions = async (accountId: string) => {
+    try {
+      const response = await apiBanking.get(`/accounts/${accountId}/transactions`);
+      console.log("Full API response:", response.data);
+  
+      return response.data.data.transactions;  // Vraćamo transakcije ako postoje
+    } catch (error: unknown) {
+      // Proveravamo da li je greška instanca AxiosError
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 404) {
+          // Ako je greška 404, ne logujemo je
+          return [];
+        }
+        // Ako nije 404 greška, logujemo je
+        console.error("Error fetching transactions:", error);
+      } else {
+        // Ako greška nije AxiosError, logujemo generičku grešku
+        console.error("An unexpected error occurred:", error);
+      }
+      return [];  // Vraćamo praznu listu u svim slučajevima greške
+    }
   };
   
 
