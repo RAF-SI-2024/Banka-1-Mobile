@@ -2,6 +2,8 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { AxiosError } from 'axios';
 
+
+//ip svog kompa
 const BANKING_BASE_URL = 'http://192.168.88.44:8082';
 
 const apiBanking = axios.create({
@@ -50,7 +52,7 @@ export const fetchAccountsId = async (userId: number) => {
     const formatted = rawAccounts.map((acc: any) => ({
       id: acc.id.toString(),
       subtype: acc.subtype,
-      number: `**** ${acc.accountNumber.slice(-4)}`,
+      number: acc.accountNumber,
       balance: `${acc.balance} ${acc.currencyType}`,
     }));
   
@@ -80,6 +82,53 @@ export const fetchAccountsId = async (userId: number) => {
       return [];  // Vraćamo praznu listu u svim slučajevima greške
     }
   };
+
+  export interface Account {
+    id: number;
+    ownerID: number;
+    accountNumber: string;
+    // ... ostalo ako treba
+  }
+
+  // Tipovi transfera
+export interface Transfer {
+  id: number;
+  amount: number;
+  fromAccountId: Account;
+  toAccountId: Account;
+  receiver: string;
+  adress: string;
+  paymentCode: string;
+  paymentReference: string;
+  paymentDescription: string;
+  fromCurrency: { code: string };
+  toCurrency: { code: string };
+  createdAt: number;
+  otp?: string;
+  type: string;
+  status: 'PENDING' | 'COMPLETED' | string;
+  completedAt?: number;
+  note?: string;
+}
+
+
+// Odgovor za GET /mobile-transfers
+interface GetTransfersResponse {
+  success: boolean;
+  data: {
+    transfers: Transfer[];
+  };
+}
+
+// Dohvatanje svih transfera za ulogovanog korisnika (JWT identifikuje usera)
+export const getAllTransfers = async (): Promise<Transfer[]> => {
+  const response = await apiBanking.get<GetTransfersResponse>('/mobile-transfers');
+  if (response.data.success) {
+    return response.data.data.transfers;
+  }
+  console.error('Failed to fetch transfers', response.data);
+  return [];
+};
   
 
   

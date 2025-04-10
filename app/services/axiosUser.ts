@@ -2,7 +2,7 @@ import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
 
-
+//ip svog kompa
 const BASE_URL = 'http://192.168.88.44:8081';
 
 const apiUser = axios.create({
