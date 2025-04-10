@@ -24,7 +24,7 @@ export default function TabsLayout() {
           name="verification"
           options={{
             headerTitle: "Verification",
-           // headerShown:false,
+            headerShown:false,
             tabBarIcon: ({ focused }) => (
               <Ionicons
                 name={focused ? "checkmark-circle" : "checkmark-circle-outline"}

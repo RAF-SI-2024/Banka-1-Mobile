@@ -1,82 +1,106 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from "react-native";
-import { Card } from "react-native-paper";
-import Ionicons from "react-native-vector-icons/Ionicons";
+import React, { useRef } from "react";
+import {
+  View,
+  FlatList,
+  TouchableOpacity,
+  Dimensions,
+  StyleSheet,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from "react-native";
+import { Card, Text } from "react-native-paper";
 
 const { width } = Dimensions.get("window");
 
 type Account = {
-    id: string;
-    subtype: string;
-    number: string;
-    balance: string;
+  id: string;
+  subtype: string;
+  number: string;
+  balance: string;
 };
 
-
-type AccountCarouselProps = {
-    accounts: Account[];
-    onAccountChange: (id: string) => void;
+type Props = {
+  accounts: Account[];
+  onAccountChange: (id: string) => void;
 };
 
-const AccountCarousel: React.FC<AccountCarouselProps> = ({ accounts, onAccountChange }) => {
-    const [activeIndex, setActiveIndex] = useState(0);
+export default function AccountCarouselFlatList({ accounts, onAccountChange }: Props) {
+  const flatRef = useRef<FlatList>(null);
 
-    const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        const index = Math.round(event.nativeEvent.contentOffset.x / width);
-        if (index !== activeIndex && accounts[index]) {
-            setActiveIndex(index);
-            onAccountChange(accounts[index].id);
-        }
-    };
+  // Širina jedne kartice je 85% ekrana
+  const CARD_WIDTH = width * 0.85;
+  // Razmak između kartica
+  const SPACING = 16;
+  // Padding da prva i poslednja budu centrirane
+  const SIDE_PADDING = (width - CARD_WIDTH) / 2;
 
-    return (
-        <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={200}
-            style={{ marginBottom: 20 }}
-            contentContainerStyle={{ alignItems: "center" }}
-        > 
-            {accounts.length > 0 ? (
-                accounts.map((account) => (
-                    <Card
-                        key={account.id}
-                        style={{
-                            width: width * 0.9,
-                            marginHorizontal: width * 0.05,
-                            backgroundColor: "white",
-                            padding: 16,
-                            borderRadius: 12,
-                            height: 130,  
-                            marginTop: -50,
-                            position: "relative",
-                        }}
-                    >
-                         <Ionicons
-                            name="card-outline"
-                            size={30}
-                            color="#1E2432"
-                            style={{
-                                position: "absolute",
-                                left: 10,
-                            }}
-                        />
-                        <Text style={{ color: "#1E2432", fontSize: 18, fontWeight: "bold", alignSelf: 'center' }}>{account.subtype}</Text>
-                        <Text style={{ color: "#1E2432", marginTop: 4, alignSelf: 'center' }}>{account.number}</Text>
-                        <Text style={{ color: "#1E2432", fontSize: 16, marginTop: 15, alignSelf: 'center' }}>Available:</Text>
-                        <Text style={{ color: "#1E2432", fontSize: 22, fontWeight: "bold" , alignSelf: 'center'}}>{account.balance}</Text>
-                    </Card>
-                    
-                ))
-            ) : (
-                <View style={{ width: width * 0.9, marginHorizontal: width * 0.05, alignItems: "center", padding: 20 }}>
-                    <Text style={{ color: "white", fontSize: 18 }}>No accounts available</Text>
-                </View>
-            )} 
-        </ScrollView>
-    );
-};
+  const onMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = e.nativeEvent.contentOffset.x;
+    const idx = Math.round(offsetX / (CARD_WIDTH + SPACING));
+    if (accounts[idx]) onAccountChange(accounts[idx].id);
+  };
 
-export default AccountCarousel;
+  const renderItem = ({ item }: { item: Account }) => (
+    <TouchableOpacity activeOpacity={0.8}>
+      <Card style={[styles.card, { width: CARD_WIDTH }]}>
+        <Text style={styles.title}>{item.subtype}</Text>
+        <Text style={styles.number}>{item.number}</Text>
+        <Text style={styles.label}>Available:</Text>
+        <Text style={styles.balance}>{item.balance}</Text>
+      </Card>
+    </TouchableOpacity>
+  );
+
+  return (
+    <FlatList
+      ref={flatRef}
+      horizontal
+      data={accounts}
+      keyExtractor={(item) => item.id}
+      renderItem={renderItem}
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{
+        paddingHorizontal: SIDE_PADDING,
+      }}
+      ItemSeparatorComponent={() => <View style={{ width: SPACING }} />}
+      snapToInterval={CARD_WIDTH + SPACING}
+      decelerationRate="fast"
+      onMomentumScrollEnd={onMomentumScrollEnd}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    height: 140,
+    justifyContent: "center",
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  number: {
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 4,
+    // Omogućavamo wrap teksta ukoliko je broj predugačak
+    flexWrap: "wrap",
+    // Ili, ukoliko više voliš da se broj smanji umesto wrap-a:
+    flexShrink: 1,
+  },
+  label: {
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 12,
+  },
+  balance: {
+    fontSize: 20,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 4,
+  },
+});
