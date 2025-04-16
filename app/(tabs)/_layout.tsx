@@ -12,6 +12,15 @@ export default function TabsLayout() {
            <Ionicons name={focused? "wallet-sharp": "wallet-outline"} 
            size={25}> </Ionicons>
         }}/>
+        <Tabs.Screen name="new-payment"
+        options={{
+          title: "New Payment",
+          headerShown:false,
+          tabBarIcon:  ({focused,color}) =>  
+          <Ionicons name={focused? "cash-sharp": "cash-outline"} 
+          size={25}> </Ionicons>,
+        }}
+      />
         <Tabs.Screen name="profile"
         options={{
           headerTitle:"Profile",

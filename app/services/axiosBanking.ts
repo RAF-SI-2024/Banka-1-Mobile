@@ -8,6 +8,7 @@ const BANKING_BASE_URL = 'http://192.168.88.44:8082';
 
 const apiBanking = axios.create({
   baseURL: BANKING_BASE_URL,
+  timeout: 20000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -49,12 +50,20 @@ export const fetchAccountsId = async (userId: number) => {
       return [];
     }
   
-    const formatted = rawAccounts.map((acc: any) => ({
-      id: acc.id.toString(),
-      subtype: acc.subtype,
-      number: acc.accountNumber,
-      balance: `${acc.balance} ${acc.currencyType}`,
-    }));
+    const formatted = rawAccounts.map((acc: any) => {
+      const balanceNum = Number(acc.balance);
+      const roundedBalance = isNaN(balanceNum)
+        ? acc.balance
+        : balanceNum.toFixed(2);
+  
+      return {
+        id: acc.id.toString(),
+        subtype: acc.subtype,
+        number: acc.accountNumber,
+        // Zaokruženo na dve decimale
+        balance: `${roundedBalance} ${acc.currencyType}`,
+      };
+    });
   
     return formatted;
   };
@@ -128,6 +137,36 @@ export const getAllTransfers = async (): Promise<Transfer[]> => {
   }
   console.error('Failed to fetch transfers', response.data);
   return [];
+};
+
+// Fetch svih računa za korisnika
+export const fetchAccountsForUser = async (userId: number): Promise<any[]> => {
+  const response = await apiBanking.get(`/accounts/user/${userId}`);
+  // Pretpostavljamo da backend vraća data.accounts
+  return response.data?.data?.accounts || [];
+};
+
+// Fetch svih brzih recipijenata za korisnika
+export const getAllRecipientsForUser = async (userId: number): Promise<any[]> => {
+  const response = await apiBanking.get(`/receiver/${userId}`);
+  return response.data?.data?.receivers || [];
+};
+
+// Fetch payment codes
+export const getPaymentCodes = async (): Promise<{ code: string; description: string }[]> => {
+  const response = await apiBanking.get('/metadata/payment-codes');
+  return response.data?.data?.codes || [];
+};
+
+// Kreiranje novog transfera (plaćanja)
+export const createNewMoneyTransfer = async (transferData: any): Promise<{ transferId: string }> => {
+  const response = await apiBanking.post('/money-transfer', transferData);
+  return response.data?.data;
+};
+
+// Verifikacija OTP koda za transfer
+export const verifyOTP = async (otpData: { transferId: string; otpCode: string }): Promise<void> => {
+  await apiBanking.post('/otp/verification', otpData);
 };
   
 
