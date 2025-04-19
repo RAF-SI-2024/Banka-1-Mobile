@@ -15,8 +15,9 @@ const apiUser = axios.create({
 // Dodaje token 
 apiUser.interceptors.request.use(async (config) => {
   const token = await SecureStore.getItemAsync("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (token && config.headers) {
+    // Castujemo headers na any pa dodeljujemo
+    (config.headers as any).Authorization = `Bearer ${token}`;
   }
   return config;
 });
@@ -36,7 +37,7 @@ export const logoutUser = async (): Promise<void> => {
     headers: {
       Authorization: `Bearer ${token}`,
     },
-  });
+  }); 
   await SecureStore.deleteItemAsync("token");
 };
 

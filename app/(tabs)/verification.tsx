@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
+import * as SecureStore from "expo-secure-store";
 import { View, Text, StyleSheet, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { getAllTransfers, Transfer } from '../services/axiosBanking';
@@ -45,6 +46,13 @@ export default function VerificationScreen() {
 
   // Fetch transfera
   const fetchTransfers = useCallback(async () => {
+
+    const token = await SecureStore.getItemAsync("token");
+    if (!token) {
+      // nema tokena => korisnik nije ulogovan => zaustavljamo polling
+      return;
+    }
+
     setRefreshing(true);
     try {
       const all = await getAllTransfers();
@@ -59,9 +67,16 @@ export default function VerificationScreen() {
   }, []);
 
   useEffect(() => {
-    fetchTransfers();
-    const poll = setInterval(fetchTransfers, POLL_INTERVAL);
-    return () => clearInterval(poll);
+    let poll: NodeJS.Timeout;
+    (async () => {
+      const t = await SecureStore.getItemAsync("token");
+      if (!t) return;
+      fetchTransfers();
+      poll = setInterval(fetchTransfers, POLL_INTERVAL);
+    })();
+    return () => {
+      if (poll) clearInterval(poll);
+    };
   }, [fetchTransfers]);
 
   useFocusEffect(useCallback(() => { fetchTransfers(); }, [fetchTransfers]));
