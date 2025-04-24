@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import {
   View,
   FlatList,
@@ -21,11 +21,22 @@ type Account = {
 
 type Props = {
   accounts: Account[];
+  selectedAccountId: string;
   onAccountChange: (id: string) => void;
 };
 
-export default function AccountCarouselFlatList({ accounts, onAccountChange }: Props) {
+export default function AccountCarouselFlatList({ accounts, selectedAccountId, onAccountChange }: Props) {
   const flatRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+        const idx = accounts.findIndex(acc => acc.id === selectedAccountId);
+        if (idx >= 0) {
+          flatRef.current?.scrollToIndex({
+            index: idx,
+            animated: true,
+          });
+       }
+    }, [selectedAccountId, accounts]);
 
   // Širina jedne kartice je 85% ekrana
   const CARD_WIDTH = width * 0.85;

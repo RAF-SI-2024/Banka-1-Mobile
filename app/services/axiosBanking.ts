@@ -1,10 +1,11 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { AxiosError } from 'axios';
+import { jwtDecode } from "jwt-decode";
 
 
 //ip svog kompa
-const BANKING_BASE_URL = 'http://192.168.88.44:8082';
+const BANKING_BASE_URL = 'http://192.168.88.10:8082';
 
 const apiBanking = axios.create({
   baseURL: BANKING_BASE_URL,
@@ -105,6 +106,7 @@ export interface Transfer {
   amount: number;
   fromAccountId: Account;
   toAccountId: Account;
+  recipientAccount: string; 
   receiver: string;
   adress: string;
   paymentCode: string;
@@ -129,14 +131,34 @@ interface GetTransfersResponse {
   };
 }
 
+/*
 // Dohvatanje svih transfera za ulogovanog korisnika (JWT identifikuje usera)
 export const getAllTransfers = async (): Promise<Transfer[]> => {
   const response = await apiBanking.get<GetTransfersResponse>('/mobile-transfers');
   if (response.data.success) {
+   // console.log(response.data.data.transfers)
     return response.data.data.transfers;
   }
   console.error('Failed to fetch transfers', response.data);
   return [];
+
+};
+*/
+export const getAllTransfers = async (): Promise<Transfer[]> => {
+  const response = await apiBanking.get<GetTransfersResponse>('/mobile-transfers');
+  if (!response.data.success) {
+    console.error('getAllTransfers ▶ server error', response.data);
+    return [];
+  }
+
+  const raw = response.data.data.transfers;
+  console.log('getAllTransfers ▶ raw payload:', raw);
+
+  return raw.map(t => ({
+    ...t,
+    // always give yourself somewhere safe to read a string
+    recipientAccount: t.toAccountId?.accountNumber ?? '(no account)',
+  }));
 };
 
 // Fetch svih računa za korisnika
@@ -161,6 +183,7 @@ export const getPaymentCodes = async (): Promise<{ code: string; description: st
 // Kreiranje novog transfera (plaćanja)
 export const createNewMoneyTransfer = async (transferData: any): Promise<{ transferId: string }> => {
   const response = await apiBanking.post('/money-transfer', transferData);
+  console.log(response.data?.data);
   return response.data?.data;
 };
 
@@ -168,7 +191,72 @@ export const createNewMoneyTransfer = async (transferData: any): Promise<{ trans
 export const verifyOTP = async (otpData: { transferId: string; otpCode: string }): Promise<void> => {
   await apiBanking.post('/otp/verification', otpData);
 };
-  
+
+// shape your Fast‐Recipient form
+export interface FastRecipientForm {
+  firstName: string;
+  lastName: string;
+  accountNumber: string;
+  address?: string;
+  ownerAccountId: number;
+}
+
+// what the backend returns (and what you display)
+export interface Recipient {
+  id: number;
+  firstName: string;
+  lastName: string;
+  accountNumber: string;
+  address?: string;
+  usageCount?: number;
+}
+
+// fetch top‐3 quick recipients
+export const fetchRecipientsForFast = async (
+  customerId: number
+): Promise<Recipient[]> => {
+  const res = await apiBanking.get(`/receiver/${customerId}`);
+  const list = res.data?.data?.receivers as any[];
+  if (!Array.isArray(list)) return [];
+  return list
+    .sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
+    .slice(0, 3)
+    .map(r => ({
+      id: r.id,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      accountNumber: r.accountNumber,
+      address: r.address,
+      usageCount: r.usageCount,
+    }));
+};
+
+export const getUserIdFromToken = async (): Promise<number | null> => {
+  const token = await SecureStore.getItemAsync("token");
+  if (!token) return null;
+
+  try {
+    const decoded: any = jwtDecode(token);
+    return decoded.id;
+  } catch (error) {
+    console.error("Greška pri dekodiranju tokena:", error);
+    return null;
+  }
+};
+
+export const fetchMyRecipients = async (): Promise<Recipient[]> => {
+  const userId = await getUserIdFromToken();
+  if (!userId) return [];
+
+  // backend path is /receiver/:userId
+  const res = await apiBanking.get<{
+    data: { receivers: Recipient[] }
+  }>(`/receiver/${userId}`);
+
+  const list = res.data.data.receivers;
+  return Array.isArray(list) ? list : [];
+};
+
 
   
 export default apiBanking;

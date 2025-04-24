@@ -14,8 +14,10 @@ import { useRouter } from 'expo-router';
 import { logoutUser, getUserIdFromToken } from '../services/axiosUser';
 import apiUser from '../services/axiosUser';
 import { Card } from 'react-native-paper';
+import { useTokenExpiryLogout } from '../../.expo/hooks/useTokenExpiryLogout';
 
 export default function ProfileScreen() {
+  useTokenExpiryLogout();
   const router = useRouter();
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);

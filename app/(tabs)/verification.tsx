@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, FlatList, RefreshControl, ActivityIndicator } f
 import { useFocusEffect } from 'expo-router';
 import { getAllTransfers, Transfer } from '../services/axiosBanking';
 import apiUser, { getUserIdFromToken } from '../services/axiosUser';
+import { useTokenExpiryLogout } from '../../.expo/hooks/useTokenExpiryLogout';
 
 interface User {
   id: number;
@@ -16,6 +17,7 @@ const OTP_TTL = 5 * 60 * 1000;
 const POLL_INTERVAL = 2000;
 
 export default function VerificationScreen() {
+  useTokenExpiryLogout();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [now, setNow] = useState(Date.now());
   const [refreshing, setRefreshing] = useState(false);
@@ -43,6 +45,8 @@ export default function VerificationScreen() {
     const iv = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(iv);
   }, []);
+
+
 
   // Fetch transfera
   const fetchTransfers = useCallback(async () => {
@@ -91,7 +95,7 @@ export default function VerificationScreen() {
   if (loadingUser) return <ActivityIndicator style={{ flex: 1 }} size="large" />;
 
   const renderItem = ({ item }: { item: Transfer }) => {
-    const { amount, receiver, adress, fromCurrency, status, createdAt, otp, toAccountId } = item;
+    const { amount, receiver, adress, fromCurrency, status, createdAt, otp, toAccountId, recipientAccount } = item;
     const createdDate = new Date(createdAt).toLocaleString();
 
     // odredi primaoca:
@@ -120,15 +124,22 @@ export default function VerificationScreen() {
 
         <Text style={styles.label}>Receiver:</Text>
         <Text style={styles.value}>{displayReceiver}</Text>
-        <Text style={styles.subValue}>Account #: {toAccountId.accountNumber}</Text>
 
-        {adress && <>
+    
+        <Text style={styles.subValue}>
+          Account #: {toAccountId?.accountNumber ?? '—'}
+        </Text>
+
+
+        {adress && adress !== "N/A" && (
+        <>
           <Text style={styles.label}>Address:</Text>
           <Text style={styles.value}>{adress}</Text>
-        </>}
+        </>
+      )}
 
         <Text style={styles.label}>Amount:</Text>
-        <Text style={styles.value}>{amount} {fromCurrency.code}</Text>
+        <Text style={styles.value}>{amount.toFixed(2)} {fromCurrency.code}</Text>
 
         {status === 'PENDING' && otp && (
           <View style={styles.otpContainer}>

@@ -15,6 +15,7 @@ import {
   fetchAccountsId,
   fetchAccountsTransactions,
 } from "../services/axiosBanking";
+import FastPayments from "@/components/fastPayment";
 
 const { width } = Dimensions.get("window");
 
@@ -84,7 +85,7 @@ export default function MobileAccountTransaction() {
           const incoming = selectedAccountId === t.toAccountId.id.toString();
           return {
             receiverAccount: t.toAccountId.accountNumber,
-            amount: t.amount,
+            amount: parseFloat(t.amount.toFixed(2)),
             currency: t.currency.code,
             direction: incoming ? "incoming" : "outgoing",
             timestamp: t.timestamp,
@@ -138,6 +139,7 @@ export default function MobileAccountTransaction() {
         <View style={styles.carouselWrapper}>
           <AccountCarousel
             accounts={accounts}
+            selectedAccountId={selectedAccountId}
             onAccountChange={setSelectedAccountId}
           />
           {loadingAccounts && (
@@ -149,6 +151,8 @@ export default function MobileAccountTransaction() {
           )}
         </View>
       </Card>
+
+      <FastPayments />
 
       {/* Transactions list */}
       <View style={styles.listContainer}>
