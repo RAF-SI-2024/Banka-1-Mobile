@@ -3,7 +3,8 @@ import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
 
 //ip svog kompa
-const BASE_URL = 'http://192.168.88.10:8081';
+//const BASE_URL = 'http://192.168.88.10:8081';
+const BASE_URL = 'https://banka-1.si.raf.edu.rs/api/user';
 
 const apiUser = axios.create({
   baseURL: BASE_URL,
