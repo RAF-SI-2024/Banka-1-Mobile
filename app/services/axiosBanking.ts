@@ -5,13 +5,15 @@ import { jwtDecode } from "jwt-decode";
 
 
 //ip svog kompa
-const BANKING_BASE_URL = 'http://192.168.88.10:8082';
+//const BANKING_BASE_URL = 'http://192.168.88.10:8082';
+const BANKING_BASE_URL = 'https://banka-1.si.raf.edu.rs/api/banking';
 
 const apiBanking = axios.create({
   baseURL: BANKING_BASE_URL,
   timeout: 20000,
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json; charset=utf-8',
+    'Accept-Charset': 'utf-8',
   },
 });
 
@@ -22,6 +24,22 @@ apiBanking.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
+});
+
+apiBanking.interceptors.response.use((response) => {
+  const fix = (s: any) =>
+    typeof s === 'string'
+      ? s.replace(/\ufffd\ufffd/g, 'ć')
+      : s;
+  const recs = response.data?.data?.receivers;
+  if (Array.isArray(recs)) {
+    response.data.data.receivers = recs.map((r: any) => ({
+      ...r,
+      firstName: fix(r.firstName),
+      lastName:  fix(r.lastName),
+    }));
+  }
+  return response;
 });
 
 // Verifikacija OTP koda
@@ -152,7 +170,7 @@ export const getAllTransfers = async (): Promise<Transfer[]> => {
   }
 
   const raw = response.data.data.transfers;
-  console.log('getAllTransfers ▶ raw payload:', raw);
+  
 
   return raw.map(t => ({
     ...t,
